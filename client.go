@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/odit-bit/indexstore/index"
 	"github.com/odit-bit/indexstore/proto"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -15,10 +16,11 @@ type IndexClient struct {
 	rpc proto.IndexerClient
 }
 
-func NewIndexClient(ctx context.Context, rpcClient proto.IndexerClient) *IndexClient {
+func NewClient(ctx context.Context, conn grpc.ClientConnInterface) *IndexClient {
+	cli := proto.NewIndexerClient(conn)
 	idx := IndexClient{
 		ctx: ctx,
-		rpc: rpcClient,
+		rpc: cli,
 	}
 
 	return &idx
