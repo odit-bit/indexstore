@@ -2,6 +2,7 @@ package indexstore
 
 import (
 	"context"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/odit-bit/indexstore/index"
@@ -64,6 +65,7 @@ func (idx *IndexServer) Search(query *proto.Query, res proto.Indexer_SearchServe
 			DocCount: iter.TotalCount(),
 		},
 	}
+	log.Println("index grpc server :", iter.TotalCount())
 	if err := res.Send(&totalCount); err != nil {
 		return err
 	}
