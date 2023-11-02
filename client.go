@@ -10,8 +10,20 @@ import (
 	"github.com/odit-bit/indexstore/index"
 	"github.com/odit-bit/indexstore/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func ConnectIndex(addr string) (*IndexClient, error) {
+	indexConn, err := grpc.Dial(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+
+	return NewClient(context.TODO(), indexConn), nil
+}
+
+//==================
 
 type IndexClient struct {
 	ctx context.Context

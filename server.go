@@ -2,14 +2,66 @@ package indexstore
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/google/uuid"
 	"github.com/odit-bit/indexstore/index"
 	"github.com/odit-bit/indexstore/proto"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+type Server struct {
+	Port    int
+	Handler index.Indexer
+}
+
+func (s *Server) ListenAndServe() error {
+	grpcSrv := grpc.NewServer()
+
+	idxSrv := newServer(s.Handler)
+	proto.RegisterIndexerServer(grpcSrv, idxSrv)
+
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%d", s.Port))
+	if err != nil {
+		return err
+	}
+
+	log.Println("listen on :", listen.Addr().String())
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	defer cancel()
+
+	sigC := make(chan os.Signal, 1)
+	signal.Notify(sigC, syscall.SIGINT, syscall.SIGTERM)
+
+	var wg sync.WaitGroup
+	//server setup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		grpcSrv.Serve(listen)
+
+	}()
+
+	select {
+	case <-ctx.Done():
+	case <-sigC:
+		cancel()
+	}
+
+	grpcSrv.GracefulStop()
+
+	wg.Wait()
+	return nil
+}
 
 var _ proto.IndexerServer = (*IndexServer)(nil)
 
@@ -19,7 +71,7 @@ type IndexServer struct {
 	proto.UnimplementedIndexerServer
 }
 
-func NewServer(indexDB index.Indexer) *IndexServer {
+func newServer(indexDB index.Indexer) *IndexServer {
 	is := IndexServer{
 		db:                         indexDB,
 		UnimplementedIndexerServer: proto.UnimplementedIndexerServer{},

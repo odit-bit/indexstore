@@ -1,26 +1,25 @@
 package indexstore
 
 import (
-	"context"
-	"log"
-	"net"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/odit-bit/indexstore/index"
-	"github.com/odit-bit/indexstore/proto"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func TestXxx(t *testing.T) {
-	listen, _ := net.Listen("tcp", "localhost:6969")
-	srv := setupGrpcServer()
-	defer srv.Stop()
-	go srv.Serve(listen)
+	srv := Server{
+		Port:    6969,
+		Handler: &mockDB{},
+	}
+	go srv.ListenAndServe()
 
-	client := createGRPCClient("localhost:6969")
+	client, err := ConnectIndex("localhost:6969")
+	if err != nil {
+		t.Fatal("failed connect to server")
+	}
+
 	res, err := client.Search(index.Query{
 		Type:       0,
 		Expression: "",
@@ -45,30 +44,6 @@ func TestXxx(t *testing.T) {
 	if res.Error() != nil {
 		t.Fatal("got error when close", res.Error())
 	}
-}
-
-func createGRPCClient(address string) *IndexClient {
-	// Create a gRPC client to connect to the server.
-	// Return the client.
-
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	return NewClient(context.Background(), conn)
-}
-
-func setupGrpcServer() *grpc.Server {
-	// Implement your gRPC server setup here.
-	// Return a running gRPC server.
-
-	mock := mockDB{}
-	srv := NewServer(&mock)
-	gSrv := grpc.NewServer()
-	proto.RegisterIndexerServer(gSrv, srv)
-
-	return gSrv
 }
 
 var _ index.Indexer = (*mockDB)(nil)
