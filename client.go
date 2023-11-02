@@ -3,6 +3,7 @@ package indexstore
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/odit-bit/indexstore/index"
@@ -97,6 +98,7 @@ func (idx *IndexClient) Search(query index.Query) (index.Iterator, error) {
 		cancelFn:    cancel,
 	}
 
+	log.Println("index grpc client:", iter.totalCount)
 	return &iter, nil
 }
 

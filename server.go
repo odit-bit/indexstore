@@ -19,7 +19,7 @@ type IndexServer struct {
 	proto.UnimplementedIndexerServer
 }
 
-func NewIndexServer(indexDB index.Indexer) *IndexServer {
+func NewServer(indexDB index.Indexer) *IndexServer {
 	is := IndexServer{
 		db:                         indexDB,
 		UnimplementedIndexerServer: proto.UnimplementedIndexerServer{},
@@ -81,7 +81,10 @@ func (idx *IndexServer) Search(query *proto.Query, res proto.Indexer_SearchServe
 				IndexedAt: timestamppb.New(doc.IndexedAt),
 			}},
 		}
-		res.Send(&qRes)
+		err := res.Send(&qRes)
+		if err != nil {
+			return err
+		}
 	}
 
 	return iter.Error()
