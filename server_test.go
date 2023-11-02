@@ -29,6 +29,7 @@ func TestXxx(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer res.Close()
 
 	if res.TotalCount() != 1 {
 		t.Fatal("got total count ", res.TotalCount())
@@ -39,6 +40,10 @@ func TestXxx(t *testing.T) {
 		if doc.Title != "title-1" {
 			t.Fatal("doc error")
 		}
+	}
+
+	if res.Error() != nil {
+		t.Fatal("got error when close", res.Error())
 	}
 }
 

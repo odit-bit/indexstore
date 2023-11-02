@@ -3,6 +3,7 @@ package indexstore
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/google/uuid"
@@ -138,7 +139,9 @@ func (si *searchIterator) Error() error {
 func (si *searchIterator) Next() bool {
 	res, err := si.rpcIterator.Recv()
 	if err != nil {
-		si.lastErr = err
+		if err != io.EOF {
+			si.lastErr = err
+		}
 		si.cancelFn()
 		return false
 	}
