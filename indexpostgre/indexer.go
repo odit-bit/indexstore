@@ -1,4 +1,4 @@
-package postgreindex
+package indexpostgre
 
 import (
 	"context"
@@ -66,19 +66,50 @@ func (idx *indexer) Find(linkID uuid.UUID) (*index.Document, error) {
 
 // Search implements index.Indexer.
 func (idx *indexer) Search(query index.Query) (index.Iterator, error) {
-	//get the matchedCount document
+
+	var queryDoc, queryCount string
 	var matchedCount int
-	err := idx.db.QueryRowxContext(context.TODO(), searchDocCountQuery, query.Expression).Scan(&matchedCount)
-	if err != nil {
-		return nil, fmt.Errorf("index search documents matched count: %v", err)
-	}
+	var rows *sqlx.Rows
+	var err error
 
 	pageSize := batchSize
 	offset := query.Offset
 
-	rows, err := idx.db.QueryxContext(context.TODO(), searchDocQuery, query.Expression, offset, pageSize)
-	if err != nil {
-		return nil, fmt.Errorf("index search documents: %v", err)
+	if query.Expression == "" {
+		queryDoc = searchAllQuery
+		queryCount = searchAllCountQuery
+
+		//get the matchedCount document
+		err := idx.db.QueryRowxContext(context.TODO(), queryCount).Scan(&matchedCount)
+		if err != nil {
+			return nil, fmt.Errorf("index search documents matched count: %v", err)
+		}
+
+		rows, err = idx.db.QueryxContext(context.TODO(), queryDoc, offset, pageSize)
+		if err != nil {
+			return nil, fmt.Errorf("index search documents: %v", err)
+		}
+
+	} else {
+		switch query.Type {
+		case 1:
+			queryDoc = searchPhraseQuery
+			queryCount = searchPhraseCountQuery
+		default:
+			queryDoc = searchMatchQuery
+			queryCount = searchMatchCountQuery
+		}
+
+		//get the matchedCount document
+		err := idx.db.QueryRowxContext(context.TODO(), queryCount, query.Expression).Scan(&matchedCount)
+		if err != nil {
+			return nil, fmt.Errorf("index search documents matched count: %v", err)
+		}
+
+		rows, err = idx.db.QueryxContext(context.TODO(), queryDoc, query.Expression, offset, pageSize)
+		if err != nil {
+			return nil, fmt.Errorf("index search documents: %v", err)
+		}
 	}
 
 	docIterator := iterator{

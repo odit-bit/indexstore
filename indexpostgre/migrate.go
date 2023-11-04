@@ -1,4 +1,4 @@
-package postgreindex
+package indexpostgre
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 )
 
 var tsvector = "to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content,''))"
+
 
 const dropDocumentsTable = `
 	DROP TABLE IF EXISTS documents;

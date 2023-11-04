@@ -1,4 +1,4 @@
-package postgreindex
+package indexpostgre
 
 import (
 	"bytes"
@@ -8,12 +8,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
 	"github.com/odit-bit/indexstore/index"
 )
 
 func Test_postgre_indexer(t *testing.T) {
-	db, err := sqlx.Connect("pgx", "host=localhost user=development password=credential dbname=development sslmode=disable")
+	// IMPORT !!
+	// _ "github.com/jackc/pgx/v5/stdlib"
+	db, err := sqlx.Connect("pgx", "host=localhost dbname=postgres password=test user=postgres")
 	if err != nil {
 		t.Fatal("open db conn:", err)
 	}
@@ -58,6 +61,37 @@ func Test_postgre_indexer(t *testing.T) {
 	asserDocIterator(docs, docIt, t)
 
 	//===================
+
+	docIt, err = pgIndex.Search(index.Query{
+		Type:       1,
+		Expression: "example",
+		Offset:     0,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer docIt.Close()
+
+	// assertDocIterator
+	asserDocIterator(docs, docIt, t)
+
+	//===================
+	docIt, err = pgIndex.Search(index.Query{
+		Type:       0,
+		Expression: "",
+		Offset:     0,
+	})
+
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer docIt.Close()
+
+	// assertDocIterator
+	asserDocMatchALLQueryIterator(docs, docIt, t)
+
+	//===================
 	idx1 := &index.Document{
 		LinkID:    uuid.New(),
 		URL:       "www.example.com",
@@ -98,6 +132,37 @@ func asserDocIterator(expect []index.Document, docIt index.Iterator, t *testing.
 	// sort the expected
 	sort.Slice(expect, func(i, j int) bool {
 		return expect[i].Pagerank >= expect[j].Pagerank
+	})
+
+	// check total count
+	if total := docIt.TotalCount(); total != uint64(len(expect)) {
+		t.Fatal("total count not meet expected got: ", total)
+	}
+
+	count := 0
+
+	for docIt.Next() {
+		doc := docIt.Document()
+		if !bytes.Equal(expect[count].LinkID[:], doc.LinkID[:]) {
+			t.Logf("different doc as expected\nexp:%v \ngot:%v \n", expect[count], doc)
+			t.FailNow()
+		}
+		count++
+	}
+	if err := docIt.Error(); err != nil {
+		t.Fatal(err)
+	}
+
+	if count == 0 {
+		t.Fatal("iterator not iterate", count)
+	}
+
+}
+
+func asserDocMatchALLQueryIterator(expect []index.Document, docIt index.Iterator, t *testing.T) {
+	// sort the expected
+	sort.Slice(expect, func(i, j int) bool {
+		return float64(expect[i].LinkID.ID()) <= float64(expect[j].LinkID.ID())
 	})
 
 	// check total count
